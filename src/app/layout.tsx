@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title,
   description,
   applicationName: "HAZE",
-  metadataBase: new URL("https://haze.vercel.app"),
+  metadataBase: new URL("https://haze-rho.vercel.app"),
   openGraph: { title, description, type: "website", siteName: "HAZE" },
   twitter: { card: "summary_large_image", title, description },
   icons: {

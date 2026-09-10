@@ -217,6 +217,10 @@ button {
   place-items: center;
   text-align: center;
   padding: 24px;
+  /* On a short viewport the copy is taller than the stage; let it scroll rather
+     than hiding the one button that matters. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   /* Deliberately thin at the top: the preview smoke rises behind the copy. */
   background: linear-gradient(180deg, rgba(4, 5, 7, 0.3) 0%, rgba(5, 6, 9, 0.8) 38%, rgba(4, 5, 7, 0.95) 100%);
   backdrop-filter: blur(1.5px);
@@ -651,11 +655,54 @@ button {
 }
 
 @media (max-width: 560px) {
+  .shell {
+    padding: 14px 12px 18px;
+  }
+  /* Portrait gives a face far more room, and cover-cropping the 16:9 camera to
+     it is the better framing anyway. */
+  .stage {
+    aspect-ratio: 3 / 4;
+  }
   .modes {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .meters {
-    width: 55%;
+    width: 58%;
+  }
+  .wordmark {
+    gap: 9px;
+  }
+  .wordmark p {
+    display: none;
+  }
+  .preroll {
+    padding: 18px 16px;
+    place-items: start center;
+  }
+  .preroll-inner {
+    gap: 13px;
+    padding: 8px 0 4px;
+  }
+  .preroll h2 {
+    font-size: 30px;
+  }
+  .preroll .sub {
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  .steps {
+    gap: 6px;
+  }
+  .step {
+    padding: 7px 10px;
+    font-size: 11.5px;
+  }
+  .cta {
+    height: 46px;
+    padding: 0 24px;
+  }
+  .fineprint {
+    font-size: 11px;
   }
 }
 
