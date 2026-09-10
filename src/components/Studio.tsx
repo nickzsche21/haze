@@ -53,6 +53,7 @@ export default function Studio() {
   const [recording, setRecording] = useState(false);
   const [clip, setClip] = useState<Clip | null>(null);
   const [preview, setPreview] = useState(false);
+  const [diag, setDiag] = useState(false);
 
   // Resolved after mount: MediaRecorder support is a client-only fact, and
   // deciding it during render desynchronises the server HTML.
@@ -73,6 +74,23 @@ export default function Studio() {
   useEffect(() => {
     engineRef.current?.sfx.setMuted(muted);
   }, [muted]);
+
+  useEffect(() => {
+    engineRef.current?.setDiagnostics(diag);
+  }, [diag]);
+
+  // "D" surfaces the raw expression channels — the fastest way to find out why
+  // a face is not triggering a drag.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "d" && e.key !== "D") return;
+      const el = e.target as HTMLElement | null;
+      if (el && /^(INPUT|TEXTAREA)$/.test(el.tagName)) return;
+      setDiag((d) => !d);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Run the synthetic-breath preview the moment the page loads, so the first
   // thing anyone sees is smoke rather than a permission prompt.
@@ -193,6 +211,9 @@ export default function Studio() {
           </button>
           <button className="tool" onClick={() => engineRef.current?.clearSmoke()} disabled={!running}>
             Clear
+          </button>
+          <button className="tool" data-on={diag} onClick={() => setDiag((d) => !d)} disabled={!running} title="Show the raw face signals (D)">
+            Signals
           </button>
           {canRecord && (
             <button className="tool" data-rec={recording} onClick={toggleRecord} disabled={!running}>
@@ -336,6 +357,9 @@ export default function Studio() {
             <span className="label">Now playing</span>
             <p className="hint">
               <b>{mode.name}.</b> {mode.hint}
+            </p>
+            <p className="hint" style={{ marginTop: 8 }}>
+              Not triggering? Press <b>D</b> for the raw face signals and see which one is falling short.
             </p>
           </div>
 

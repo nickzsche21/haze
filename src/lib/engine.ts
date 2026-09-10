@@ -87,6 +87,7 @@ export class Engine {
   private handMissing = 0;
   private popups: Popup[] = [];
   private vignette: HTMLCanvasElement | null = null;
+  private diagnostics = false;
   private demo = false;
   private demoBackdrop: HTMLCanvasElement | null = null;
   private lastStatsPush = 0;
@@ -115,6 +116,15 @@ export class Engine {
 
   setMirror(on: boolean) {
     this.mirror = on;
+  }
+
+  /**
+   * Shows the raw expression channels against the thresholds that gate each
+   * phase. Faces differ; if a drag or a ring will not fire, this says which
+   * signal is falling short.
+   */
+  setDiagnostics(on: boolean) {
+    this.diagnostics = on;
   }
 
   clearSmoke() {
@@ -486,6 +496,56 @@ export class Engine {
     ctx.font = `800 ${17 * u}px ui-sans-serif, system-ui, sans-serif`;
     ctx.fillStyle = "#ffffff";
     ctx.fillText("HAZE", W - 20 * u, H - 18 * u);
+    ctx.restore();
+
+    if (this.diagnostics && s) this.drawDiagnostics(s, u);
+  }
+
+  private drawDiagnostics(s: FaceSignals, u: number) {
+    const ctx = this.ctx;
+    const rows: Array<[string, number, number]> = [
+      ["pucker", s.pucker, 0.42],
+      ["open", s.open, 0.3],
+      ["funnel", s.funnel, 0.46],
+      ["cheeks", s.cheeks, 0.5],
+      ["brow", s.browUp, 0.55],
+    ];
+    const w = 168 * u;
+    const h = (rows.length * 20 + 30) * u;
+    const x = 16 * u;
+    const y = this.canvas.height - h - 16 * u;
+
+    ctx.save();
+    ctx.fillStyle = "rgba(6,7,10,0.78)";
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.strokeRect(x, y, w, h);
+
+    ctx.font = `700 ${10 * u}px ui-monospace, Menlo, monospace`;
+    ctx.fillStyle = "rgba(255,255,255,0.45)";
+    ctx.textAlign = "left";
+    ctx.fillText("SIGNAL / THRESHOLD", x + 10 * u, y + 15 * u);
+
+    rows.forEach(([name, value, threshold], i) => {
+      const ry = y + (30 + i * 20) * u;
+      ctx.font = `${11 * u}px ui-monospace, Menlo, monospace`;
+      ctx.fillStyle = value >= threshold ? "#6ee7a8" : "rgba(255,255,255,0.62)";
+      ctx.fillText(name, x + 10 * u, ry);
+      ctx.textAlign = "right";
+      ctx.fillText(value.toFixed(2), x + w - 44 * u, ry);
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.fillText(threshold.toFixed(2), x + w - 10 * u, ry);
+      ctx.textAlign = "left";
+
+      const bx = x + 10 * u;
+      const by = ry + 4 * u;
+      ctx.fillStyle = "rgba(255,255,255,0.14)";
+      ctx.fillRect(bx, by, w - 20 * u, 2 * u);
+      ctx.fillStyle = value >= threshold ? "#6ee7a8" : "rgba(255,255,255,0.5)";
+      ctx.fillRect(bx, by, (w - 20 * u) * Math.min(1, value), 2 * u);
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.fillRect(bx + (w - 20 * u) * threshold, by - 2 * u, 1.5 * u, 6 * u);
+    });
     ctx.restore();
   }
 }
