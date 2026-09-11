@@ -217,16 +217,34 @@ export class Engine {
     if (this.canvas.width !== w || this.canvas.height !== h) {
       this.canvas.width = w;
       this.canvas.height = h;
-      this.renderer?.resize(w, h);
       this.vignette = buildVignette(w, h);
     }
+    // Deliberately outside that branch. The canvas ships at 1280x720, so a
+    // camera that delivers exactly 1280x720 matches on the first frame and the
+    // renderer would never get sized — leaving render() a silent no-op.
+    // resize() keeps its own dirty check, so calling it every frame is free.
+    this.renderer?.resize(w, h);
   }
 
   private loop = () => {
     if (!this.running) return;
     this.raf = requestAnimationFrame(this.loop);
-    this.frameAt(performance.now());
+    try {
+      this.frameAt(performance.now());
+      this.failures = 0;
+    } catch (err) {
+      // A throwing frame must never take the loop down in silence — that
+      // presents as a frozen canvas with nothing to act on.
+      if (this.failures === 0) console.error("[haze] frame failed", err);
+      if (++this.failures > 30) {
+        this.running = false;
+        cancelAnimationFrame(this.raf);
+        this.cb.onStatus("error", "The vision pipeline stopped responding. Reload the page to restart it.");
+      }
+    }
   };
+
+  private failures = 0;
 
   /**
    * One simulation-and-draw step at an explicit timestamp.
@@ -330,7 +348,13 @@ export class Engine {
     if (this.video.currentTime === this.lastVideoTime || this.video.readyState < 2) return;
     this.lastVideoTime = this.video.currentTime;
 
-    const face = readFace(vision.face, this.video, now);
+    let face: ReturnType<typeof readFace> = null;
+    try {
+      face = readFace(vision.face, this.video, now);
+    } catch {
+      // Skip this frame's tracking; existing smoke still simulates and draws.
+      return;
+    }
     if (face) {
       this.signals = this.smoother.update(face, W, H, dtMs);
       this.noFaceSince = 0;
@@ -346,7 +370,12 @@ export class Engine {
     // Hands cost roughly as much as the face model; a third of the rate is
     // invisible on a prop that barely moves between frames.
     if (vision.hands && this.frame % 3 === 0) {
-      const h = readHand(vision.hands, this.video, now + 0.5);
+      let h: ReturnType<typeof readHand> = null;
+      try {
+        h = readHand(vision.hands, this.video, now + 0.5);
+      } catch {
+        h = null; // the prop is a garnish; never let it cost a frame
+      }
       if (h) {
         this.hand = h.landmarks;
         this.handMissing = 0;

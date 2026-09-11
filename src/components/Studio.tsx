@@ -158,6 +158,9 @@ export default function Studio() {
       onTrick,
     });
     engineRef.current = engine;
+    if (process.env.NODE_ENV !== "production") {
+      (window as unknown as { __haze?: unknown }).__haze = engine;
+    }
     engine.setMode(mode);
     engine.setShowProp(showProp);
     // Audio has to be unlocked inside the click that started all this.

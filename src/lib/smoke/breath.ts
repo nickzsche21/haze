@@ -37,7 +37,9 @@ export interface BreathState {
 }
 
 const T = {
-  dragPucker: 0.42,
+  // A neutral face reads well under 0.2 on mouthPucker, so this leaves room
+  // to trigger without catching ordinary speech.
+  dragPucker: 0.34,
   dragMaxOpen: 0.2,
   openBurst: 0.3,
   ringFunnel: 0.46,
@@ -45,6 +47,8 @@ const T = {
   ringOpenHi: 0.52,
   autoNoseMs: 2400,
   minCharge: 0.07,
+  /** A mouth this open always gets a puff, charge or no charge. */
+  freeOpen: 0.34,
 };
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -64,13 +68,16 @@ export class BreathEngine {
   private dragMs = 0;
   private lastReleaseAt = -Infinity;
   private ringCooldown = 0;
-  private freebie = true;
+  /** Armed once the mouth closes; spends itself on the next wide open. */
+  private freeArmed = true;
+  private lastFreeAt = -Infinity;
 
   reset() {
     this.phase = "idle";
     this.charge = 0;
     this.dragMs = 0;
     this.ringCooldown = 0;
+    this.freeArmed = true;
   }
 
   get currentPhase() {
@@ -93,14 +100,16 @@ export class BreathEngine {
         if (dragging) {
           this.phase = "drag";
           this.dragMs = 0;
-        } else if (s.open > 0.45 && this.freebie) {
-          // Nobody reads instructions. A wide-open mouth on a cold start still
-          // gets a puff, which is how most people discover the rest.
-          this.charge = 0.42;
+        } else if (s.open > T.freeOpen && this.freeArmed && tMs - this.lastFreeAt > 800) {
+          // Nobody reads instructions, and mouthPucker varies enough between
+          // faces that gating every puff on it risks a dead app. Opening your
+          // mouth always produces smoke; the drag mechanic is the depth on top.
+          this.charge = 0.45;
           this.phase = "exhale";
-          this.freebie = false;
+          this.freeArmed = false;
+          this.lastFreeAt = tMs;
           this.holdStart = tMs;
-          released = { type: "MOUTH_BURST", strength: 0.42, heldMs: 0 };
+          released = { type: "MOUTH_BURST", strength: 0.45, heldMs: 0 };
         }
         break;
       }
@@ -195,6 +204,7 @@ export class BreathEngine {
       }
     }
 
+    if (s.open < 0.16) this.freeArmed = true;
     if (released) this.lastReleaseAt = tMs;
 
     // Attractors run every frame regardless of phase. Pursed lips pull smoke
